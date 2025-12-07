@@ -9,8 +9,23 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY |
 // vars may be missing which can cause runtime errors. If creation fails,
 // export a lightweight stub that returns empty results to avoid crashing the app.
 function createStubClient() {
-  const noop = async () => ({ data: null, error: null });
-  const chainable = () => ({ select: noop, insert: noop, update: noop, delete: noop, maybeSingle: noop, single: noop, order: () => chainable(), eq: () => chainable() });
+  const terminalResult = async () => ({ data: null, error: null });
+  // Build a chainable query builder that returns itself for query methods
+  const chainable = () => {
+    const q: any = {
+      select: (_cols?: string) => q,
+      order: (_col?: string) => q,
+      eq: (_field?: string, _value?: any) => q,
+      // terminal methods return a promise mimicking Supabase response
+      maybeSingle: terminalResult,
+      single: terminalResult,
+      insert: terminalResult,
+      update: terminalResult,
+      delete: terminalResult,
+      then: (cb: any) => Promise.resolve(terminalResult()).then(cb),
+    };
+    return q;
+  };
   return {
     auth: {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
