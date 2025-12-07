@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ const getGradeColor = (grade: number): string => {
 
 export const StudentView = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [studentId, setStudentId] = useState('');
   const [student, setStudent] = useState<Student | null>(null);
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -247,7 +249,7 @@ export const StudentView = () => {
               </p>
             </div>
             <Button
-              onClick={() => window.location.href = '/student-auth'}
+              onClick={() => navigate('/student-auth')}
               className="bg-student hover:bg-student/90 text-white font-semibold px-8 py-6 h-auto text-lg"
             >
               <User className="w-5 h-5 mr-2" />
