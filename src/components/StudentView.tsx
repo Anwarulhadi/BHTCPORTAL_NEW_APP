@@ -245,7 +245,7 @@ export const StudentView = () => {
                 {t('studentPanelButton')}
               </h3>
               <p className="text-muted-foreground mt-1">
-                Login to access your personalized student dashboard, grades, and messages
+                {t('loginToStudentPortalDescription')}
               </p>
             </div>
             <Button
@@ -253,7 +253,7 @@ export const StudentView = () => {
               className="bg-student hover:bg-student/90 text-white font-semibold px-8 py-6 h-auto text-lg"
             >
               <User className="w-5 h-5 mr-2" />
-              Login to Student Portal
+              {t('loginToStudentPortal')}
             </Button>
           </div>
         </CardContent>
@@ -267,7 +267,7 @@ export const StudentView = () => {
             {t('studentSearchTitle')}
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            Quick grade check without login (public access)
+            {t('quickGradeCheckDescription')}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
