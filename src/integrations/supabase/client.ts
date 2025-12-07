@@ -2,16 +2,42 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Safely create a Supabase client. In mobile (Capacitor) builds the Vite env
+// vars may be missing which can cause runtime errors. If creation fails,
+// export a lightweight stub that returns empty results to avoid crashing the app.
+function createStubClient() {
+  const noop = async () => ({ data: null, error: null });
+  const chainable = () => ({ select: noop, insert: noop, update: noop, delete: noop, maybeSingle: noop, single: noop, order: () => chainable(), eq: () => chainable() });
+  return {
+    auth: {
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      getSession: async () => ({ data: { session: null } }),
+      signInWithPassword: async () => ({ error: { message: 'Supabase not configured' } }),
+      signUp: async () => ({ error: { message: 'Supabase not configured' } }),
+      signOut: async () => ({ error: null }),
+    },
+    from: () => chainable(),
+    channel: () => ({ on: () => ({ subscribe: async () => ({}) }), subscribe: async () => ({}) }),
+    removeChannel: () => {},
+  } as any;
+}
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+let supabase: any;
+try {
+  // createClient tolerates empty strings, but wrap in try/catch just in case
+  supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  });
+} catch (err) {
+  console.warn('Supabase client creation failed, using stub client:', err);
+  supabase = createStubClient();
+}
+
+export { supabase };
