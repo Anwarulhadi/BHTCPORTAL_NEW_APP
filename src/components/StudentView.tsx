@@ -229,12 +229,44 @@ export const StudentView = () => {
 
   return (
     <div className="space-y-6">
+      {/* Login to Authenticated Student Portal Card */}
+      <Card className="mt-6 border-2 border-student bg-gradient-to-br from-student/5 to-student/10">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-student rounded-full flex items-center justify-center">
+                <User className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-student">
+                {t('studentPanelButton')}
+              </h3>
+              <p className="text-muted-foreground mt-1">
+                Login to access your personalized student dashboard, grades, and messages
+              </p>
+            </div>
+            <Button
+              onClick={() => window.location.href = '/student-auth'}
+              className="bg-student hover:bg-student/90 text-white font-semibold px-8 py-6 h-auto text-lg"
+            >
+              <User className="w-5 h-5 mr-2" />
+              Login to Student Portal
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Grade Check - Public Search */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="w-5 h-5 text-student" />
             {t('studentSearchTitle')}
           </CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Quick grade check without login (public access)
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">

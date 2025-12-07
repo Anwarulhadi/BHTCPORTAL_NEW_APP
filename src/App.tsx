@@ -18,6 +18,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { OfflineAlert } from "@/components/OfflineAlert";
 import { SplashScreen } from "@/components/SplashScreen";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useState } from "react";
 
 const queryClient = new QueryClient();
@@ -33,30 +34,32 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <TooltipProvider>
-          {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-          <OfflineAlert />
-          <NotificationPermissionPrompt />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <BackButtonProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/student-auth" element={<StudentAuth />} />
-                <Route path="/student" element={<Student />} />
-                <Route path="/admin/cinematography" element={<AdminCinematography />} />
-                <Route path="/admin/video-editing" element={<AdminVideoEditing />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BackButtonProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </LanguageProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <LanguageProvider>
+          <TooltipProvider>
+            {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+            <OfflineAlert />
+            <NotificationPermissionPrompt />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <BackButtonProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/student-auth" element={<StudentAuth />} />
+                  <Route path="/student" element={<Student />} />
+                  <Route path="/admin/cinematography" element={<AdminCinematography />} />
+                  <Route path="/admin/video-editing" element={<AdminVideoEditing />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BackButtonProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </LanguageProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
