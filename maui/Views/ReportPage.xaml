@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StudentPortal.ViewModels"
+             x:Class="StudentPortal.Views.ReportPage"
+             x:Name="ReportPageRoot"
+             BackgroundColor="{DynamicResource PageBackgroundColor}">
+
+    <!-- Bind this page to the ReportPageViewModel -->
+    <ContentPage.BindingContext>
+        <vm:ReportPageViewModel />
+    </ContentPage.BindingContext>
+
+    <ContentPage.Resources>
+        <!-- Colors -->
+        <Color x:Key="PrimaryColor">#2563EB</Color> <!-- Tailwind-like blue-600 -->
+        <Color x:Key="PrimaryColorDark">#1E40AF</Color> <!-- blue-800 -->
+        <Color x:Key="CardBg">#FFFFFF</Color>
+        <Color x:Key="TextPrimary">#111827</Color> <!-- gray-900 -->
+        <Color x:Key="TextSecondary">#6B7280</Color> <!-- gray-500 -->
+        <Color x:Key="AccentBg">#F3F4F6</Color> <!-- gray-100 -->
+
+        <!-- Button Style: large, rounded, modern -->
+        <Style TargetType="Button" x:Key="PrimaryActionButton">
+            <Setter Property="TextColor" Value="White" />
+            <Setter Property="BackgroundColor" Value="{StaticResource PrimaryColor}" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="20,16" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HeightRequest" Value="56" />
+        </Style>
+
+        <!-- Card Title Label -->
+        <Style TargetType="Label" x:Key="TitleLabel">
+            <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontAttributes" Value="Bold" />
+        </Style>
+
+        <!-- Subtitle / Secondary Text -->
+        <Style TargetType="Label" x:Key="SubtitleLabel">
+            <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" Padding="20" ColumnDefinitions="*">
+            <!-- Header -->
+            <Label Grid.Row="0" Text="Student Report" Style="{StaticResource TitleLabel}" />
+            <Label Grid.Row="1" Style="{StaticResource SubtitleLabel}" Text="Review details and export as PDF" />
+
+            <!-- Card with student info -->
+            <Frame Grid.Row="2" Padding="16" CornerRadius="20" BackgroundColor="{StaticResource CardBg}" HasShadow="True" Margin="0,16,0,16">
+                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="12" RowSpacing="10">
+                    <!-- Name -->
+                    <Label Grid.Row="0" Grid.Column="0" Text="Name" TextColor="{StaticResource TextSecondary}" />
+                    <Label Grid.Row="0" Grid.Column="1" Text="{Binding CurrentReport.StudentName}" TextColor="{StaticResource TextPrimary}" FontAttributes="Bold" />
+
+                    <!-- Course -->
+                    <Label Grid.Row="1" Grid.Column="0" Text="Course" TextColor="{StaticResource TextSecondary}" />
+                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding CurrentReport.Course}" TextColor="{StaticResource TextPrimary}" />
+
+                    <!-- Grade -->
+                    <Label Grid.Row="2" Grid.Column="0" Text="Grade" TextColor="{StaticResource TextSecondary}" />
+                    <Frame Grid.Row="2" Grid.Column="1" Padding="10,6" CornerRadius="12" BackgroundColor="{StaticResource AccentBg}" HasShadow="False">
+                        <Label Text="{Binding CurrentReport.Grade}" TextColor="{StaticResource TextPrimary}" FontAttributes="Bold" />
+                    </Frame>
+                </Grid>
+            </Frame>
+
+            <!-- Export Button -->
+            <Button Grid.Row="3"
+                    Text="Export Report as PDF"
+                    Command="{Binding ExportReportCommand}"
+                    Style="{StaticResource PrimaryActionButton}"
+                    Margin="0,8,0,0"
+                    SemanticProperties.Hint="Exports the report to a PDF file"
+                    />
+
+            <!-- Helper Text -->
+            <Label Grid.Row="4" Style="{StaticResource SubtitleLabel}" Margin="0,8,0,0"
+                   Text="The PDF will be saved using your device's storage system." />
+        </Grid>
+    </ScrollView>
+</ContentPage>
