@@ -5,8 +5,9 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // 🔑 ADD THIS LINE: Base URL for deployment to GitHub Pages
-  base: "/BHTCPORTAL_NEW_APP/", 
+  // Base URL: use relative paths for Capacitor builds (mobile APK),
+  // otherwise default to the GitHub Pages repo path.
+  base: process.env.CAPACITOR === 'true' ? './' : '/BHTCPORTAL_NEW_APP/',
   server: {
     host: "::",
     port: 8080,
