@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications, Token, Channel } from '@capacitor/push-notifications';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import apiClient from '@/integrations/apiClient';
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -67,21 +67,21 @@ export async function registerPushNotifications(
       listenersRegistered = true;
 
       PushNotifications.addListener('registration', async (token: Token) => {
+        console.log('Push Registration Token:', token.value);
         latestTokenCallback?.(token.value);
         try {
-          // Save token to Supabase for later FCM sends
-          await supabase.from('device_tokens').upsert(
-            {
-              token: token.value,
-              platform: Capacitor.getPlatform(),
-              last_seen_at: new Date().toISOString(),
-            },
-            { onConflict: 'token' }
-          );
-        } catch (e) {
+          // Save token to backend via apiClient
+          const saved = await apiClient.registerDeviceToken({
+            token: token.value,
+            platform: Capacitor.getPlatform(),
+            userId: undefined
+          });
+          console.log('Token saved to DB:', saved);
+          toast.success('Device registered for updates');
+        } catch (e: any) {
           console.error('Failed saving device token', e);
+          toast.error(`Failed to save token: ${e.message || 'Unknown error'}`);
         }
-        toast.success('Push registered');
       });
 
       PushNotifications.addListener('registrationError', (error) => {
@@ -96,6 +96,13 @@ export async function registerPushNotifications(
 
       PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
         console.log('Push action', action);
+        if (action.actionId === 'tap') {
+          const newsId = action.notification.data.newsId || action.notification.data.id;
+          if (newsId) {
+            const event = new CustomEvent('navigate-to-news', { detail: newsId });
+            window.dispatchEvent(event);
+          }
+        }
       });
     }
 

@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
@@ -8,125 +8,128 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 150 30% 95%;
-    --foreground: 150 20% 15%;
+    /* 
+      Teal Theme (User Requested #0c9488)
+      Primary: #0c9488 -> 174.7 83.9% 31.4%
+    */
+
+    --background: 210 40% 98%; /* Slate 50 */
+    --foreground: 222.2 47.4% 11.2%; /* Slate 900 */
 
     --card: 0 0% 100%;
-    --card-foreground: 150 20% 15%;
+    --card-foreground: 222.2 47.4% 11.2%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 150 20% 15%;
+    --popover-foreground: 222.2 47.4% 11.2%;
 
-    --primary: 142 76% 36%;
+    --primary: 174.7 83.9% 31.4%; /* #0c9488 */
     --primary-foreground: 0 0% 100%;
     
-    --student: 142 70% 45%;
-    --student-foreground: 0 0% 100%;
-    --student-light: 142 76% 96%;
-    
-    --admin: 142 70% 45%;
-    --admin-foreground: 0 0% 100%;
-    --admin-light: 142 76% 96%;
+    --secondary: 210 40% 96.1%; /* Slate 100 */
+    --secondary-foreground: 174.7 83.9% 31.4%; /* #0c9488 */
 
-    --secondary: 150 20% 92%;
-    --secondary-foreground: 150 20% 15%;
+    --muted: 210 40% 96.1%; /* Slate 100 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Slate 500 */
 
-    --muted: 150 20% 92%;
-    --muted-foreground: 150 15% 40%;
-
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 166.2 76.5% 97.3%; /* Teal 50 */
+    --accent-foreground: 174.7 83.9% 31.4%; /* #0c9488 */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 15% 85%;
-    --input: 150 15% 90%;
-    --ring: 142 76% 36%;
+    --border: 214.3 31.8% 91.4%; /* Slate 200 */
+    --input: 214.3 31.8% 91.4%;
+    --ring: 174.7 83.9% 31.4%; /* #0c9488 */
 
     --radius: 0.75rem;
     
-    --gradient-student: linear-gradient(135deg, hsl(155 50% 45%) 0%, hsl(142 60% 38%) 100%);
-    --gradient-admin: linear-gradient(135deg, hsl(155 50% 45%) 0%, hsl(142 60% 38%) 100%);
-    --gradient-bg: linear-gradient(135deg, hsl(155 45% 50%) 0%, hsl(142 55% 40%) 100%);
+    /* App Specific Variables */
+    --student: 174.7 83.9% 31.4%; /* #0c9488 */
+    --student-foreground: 0 0% 100%;
+    --student-light: 166.2 76.5% 97.3%; /* Teal 50 */
+    
+    --admin: 174.7 83.9% 31.4%; /* #0c9488 (User requested admin panel text/buttons to be this color) */
+    --admin-foreground: 0 0% 100%;
+    --admin-light: 210 40% 96.1%; /* Slate 100 */
+
+    --gradient-student: linear-gradient(135deg, hsl(174.7 83.9% 31.4%) 0%, hsl(176, 70%, 22%) 100%);
+    --gradient-admin: linear-gradient(135deg, hsl(174.7 83.9% 31.4%) 0%, hsl(215.3 25% 26.7%) 100%);
+    /* User requested main background to be #0c9488 */
+    --gradient-bg: linear-gradient(135deg, hsl(174.7 83.9% 31.4%) 0%, hsl(174.7 83.9% 25%) 100%);
     
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
+    --sidebar-primary: 174.7 83.9% 31.6%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 166.2 76.5% 97.3%;
+    --sidebar-accent-foreground: 175.9 60.8% 19%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 174.7 83.9% 31.6%;
   }
 
   .dark {
-    --background: 150 30% 12%;
-    --foreground: 150 15% 90%;
+    --background: 222.2 47.4% 11.2%; /* Slate 950 */
+    --foreground: 210 40% 98%; /* Slate 50 */
 
-    --card: 150 25% 15%;
-    --card-foreground: 150 15% 90%;
+    --card: 215.4 50% 10.4%; /* Slate 900 */
+    --card-foreground: 210 40% 98%;
 
-    --popover: 150 25% 15%;
-    --popover-foreground: 150 15% 90%;
+    --popover: 215.4 50% 10.4%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 173.4 80.4% 40%; /* Teal 500 */
+    --primary-foreground: 222.2 47.4% 11.2%;
     
-    --student: 142 70% 45%;
-    --student-foreground: 0 0% 100%;
-    --student-light: 142 76% 20%;
-    
-    --admin: 142 70% 45%;
-    --admin-foreground: 0 0% 100%;
-    --admin-light: 142 76% 20%;
+    --secondary: 215.3 25% 26.7%; /* Slate 800 */
+    --secondary-foreground: 210 40% 98%;
 
-    --secondary: 150 20% 20%;
-    --secondary-foreground: 150 15% 90%;
+    --muted: 215.3 25% 26.7%;
+    --muted-foreground: 215 20.2% 65.1%; /* Slate 400 */
 
-    --muted: 150 20% 20%;
-    --muted-foreground: 150 12% 65%;
-
-    --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 215.3 25% 26.7%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 15% 25%;
-    --input: 150 15% 25%;
-    --ring: 142 76% 36%;
-    --gradient-bg: linear-gradient(135deg, hsl(155 40% 25%) 0%, hsl(142 45% 18%) 100%);
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 215.3 25% 26.7%;
+    --input: 215.3 25% 26.7%;
+    --ring: 173.4 80.4% 40%;
+    
+    --student: 173.4 80.4% 40%;
+    --student-foreground: 222.2 47.4% 11.2%;
+    --student-light: 215.3 25% 26.7%;
+    
+    --admin: 215.3 25% 26.7%;
+    --admin-foreground: 210 40% 98%;
+    --admin-light: 215.3 25% 26.7%;
+
+    --gradient-bg: linear-gradient(135deg, hsl(222.2 47.4% 11.2%) 0%, hsl(215.4 50% 10.4%) 100%);
+    
+    --sidebar-background: 222.2 47.4% 11.2%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 173.4 80.4% 40%;
+    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+    --sidebar-accent: 215.3 25% 26.7%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 215.3 25% 26.7%;
+    --sidebar-ring: 173.4 80.4% 40%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   /* Disable text selection globally, but allow in interactive fields */

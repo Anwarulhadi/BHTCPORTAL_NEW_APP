@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentAuth } from '@/hooks/useStudentAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -39,25 +38,7 @@ export const StudentAuth = () => {
   }, [user, linkedStudentId, isLoading, navigate]);
 
   const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    setError('');
-    
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/student`,
-        },
-      });
-      
-      if (error) {
-        setError(error.message);
-      }
-    } catch (err) {
-      setError('Failed to sign in with Google');
-    } finally {
-      setIsGoogleLoading(false);
-    }
+    toast.error("Google Sign-In is not available in this version.");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

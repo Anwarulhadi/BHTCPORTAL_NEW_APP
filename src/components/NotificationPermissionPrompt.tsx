@@ -53,22 +53,16 @@ export const NotificationPermissionPrompt = () => {
     }
 
     setPermissionState(status);
-    if (!dismissedRef.current) {
-      setOpen(status !== 'granted');
+    // Only open custom dialog if denied (to guide to settings)
+    // For 'prompt', we will trigger native request directly
+    if (!dismissedRef.current && status === 'denied') {
+      setOpen(true);
+    } else {
+      setOpen(false);
     }
 
     return status;
   }, [pushEnabled]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!pushEnabled) {
-      setInitialized(true);
-      return;
-    }
-    dismissedRef.current = localStorage.getItem(DISMISS_KEY) === 'true';
-    checkStatus().finally(() => setInitialized(true));
-  }, [checkStatus, pushEnabled]);
 
   const handleEnable = async () => {
     if (!pushEnabled) {
@@ -93,6 +87,35 @@ export const NotificationPermissionPrompt = () => {
       setIsRequesting(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!pushEnabled) {
+      setInitialized(true);
+      return;
+    }
+    
+    // Check immediately on mount
+    const check = async () => {
+        dismissedRef.current = localStorage.getItem(DISMISS_KEY) === 'true';
+        const status = await checkStatus();
+        
+        // If status is prompt, ask immediately!
+        if (status === 'prompt' && !dismissedRef.current) {
+             // Trigger native request directly
+             if (isNative()) {
+                await registerPushNotifications(undefined, { promptUser: true });
+             } else {
+                await requestAllNotificationPermissions();
+             }
+             // Re-check status after user responds
+             await checkStatus();
+        }
+        
+        setInitialized(true);
+    };
+    check();
+  }, [checkStatus, pushEnabled]);
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, 'true');

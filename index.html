@@ -2,7 +2,53 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <script>
+      console.log('WebView: index.html loaded');
+      // Global error handler for white screen debugging
+      window.onerror = function(msg, url, line, col, error) {
+        console.error('WebView Error:', msg, url, line, col, error);
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.height = '100%';
+        div.style.backgroundColor = 'white';
+        div.style.color = 'red';
+        div.style.zIndex = '999999';
+        div.style.padding = '20px';
+        div.style.overflow = 'auto';
+        div.style.fontFamily = 'monospace';
+        div.style.whiteSpace = 'pre-wrap';
+        div.innerHTML = '<h1>Global Error</h1>' + 
+          '<strong>Message:</strong> ' + msg + '<br>' +
+          '<strong>URL:</strong> ' + url + '<br>' +
+          '<strong>Line:</strong> ' + line + ':' + col + '<br>' +
+          '<strong>Stack:</strong> ' + (error && error.stack ? error.stack : 'N/A');
+        document.body.appendChild(div);
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '50%';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.height = '50%';
+        div.style.backgroundColor = '#fff0f0';
+        div.style.color = 'darkred';
+        div.style.zIndex = '999999';
+        div.style.padding = '20px';
+        div.style.overflow = 'auto';
+        div.style.fontFamily = 'monospace';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.borderTop = '2px solid red';
+        div.innerHTML = '<h1>Unhandled Promise Rejection</h1>' + 
+          '<strong>Reason:</strong> ' + event.reason;
+        document.body.appendChild(div);
+      });
+    </script>
     <title>Student Grade Portal - Check Your Academic Results</title>
     <meta name="description" content="Modern student grade management system. Students can check their grades in real-time, teachers can manage and update academic records." />
     <meta name="author" content="Academic Portal" />
@@ -10,15 +56,16 @@
     <meta property="og:title" content="Student Grade Portal" />
     <meta property="og:description" content="Check your grades and manage academic records in real-time" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0fdf4; color: #166534; font-family: sans-serif; font-weight: bold; font-size: 24px;">
+        Loading App...
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

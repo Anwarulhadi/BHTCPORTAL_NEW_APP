@@ -1,0 +1,1 @@
+import{aD as e}from"./index-CsIQr1_W.js";class i extends e{async enable(){throw this.unimplemented("Not implemented on web.")}async disable(){throw this.unimplemented("Not implemented on web.")}}export{i as PrivacyScreenWeb};

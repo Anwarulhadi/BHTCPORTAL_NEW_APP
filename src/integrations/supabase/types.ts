@@ -168,6 +168,7 @@ export type Database = {
           photo_url: string | null
           show_final_grade_letter: boolean
           student_id: string
+          password?: string | null
         }
         Insert: {
           created_at?: string | null
@@ -176,6 +177,7 @@ export type Database = {
           photo_url?: string | null
           show_final_grade_letter?: boolean
           student_id: string
+          password?: string | null
         }
         Update: {
           created_at?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           photo_url?: string | null
           show_final_grade_letter?: boolean
           student_id?: string
+          password?: string | null
         }
         Relationships: []
       }

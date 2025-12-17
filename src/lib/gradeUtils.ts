@@ -1,10 +1,13 @@
 export const calculateGradeLetter = (percentage: number): string => {
-  if (percentage >= 90) return 'A+';
-  if (percentage >= 80) return 'A';
-  if (percentage >= 70) return 'B';
-  if (percentage >= 60) return 'C';
-  if (percentage >= 50) return 'D';
-  return 'F';
+  if (percentage >= 95) return 'A+';
+  if (percentage >= 92) return 'A';
+  if (percentage >= 89) return 'A-';
+  if (percentage >= 86) return 'B+';
+  if (percentage >= 83) return 'B';
+  if (percentage >= 80) return 'B-';
+  if (percentage >= 77) return 'C+';
+  if (percentage >= 74) return 'C';
+  return 'NON CMPITANT';
 };
 
 export const calculateAverageGrade = (grades: number[]): number => {

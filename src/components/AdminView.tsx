@@ -4,10 +4,16 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Trash2, Plus, Edit, Upload, User, Eye, EyeOff, Search, X, MessageCircle, Send, Filter, Lock, Unlock, LogOut, Key, BookOpen, Camera, GraduationCap } from 'lucide-react';
-import ToggleSwitch from '@/components/ToggleSwitch';
+import { Trash2, Plus, Edit, Upload, User, Eye, EyeOff, Search, X, MessageCircle, Send, Filter, Lock, Unlock, LogOut, Key, BookOpen, Camera, GraduationCap, MoreVertical, Pencil, ChevronDown } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { exportGradeReport } from '@/lib/pdfExport';
 import { Download } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import { calculateGradeLetter, calculateAverageGrade } from '@/lib/gradeUtils';
 import { parseStudentNameMetadata, updateGradeLetterFlagInName } from '@/lib/studentMetadata';
@@ -30,8 +36,14 @@ import {
 } from '@/components/ui/select';
 import { TeacherManagement } from '@/components/TeacherManagement';
 import { NewsManagement } from '@/components/NewsManagement';
+import { VideoManagement } from '@/components/VideoManagement';
+import { ModuleManagement } from '@/components/ModuleManagement';
+import { SliderManagement } from '@/components/SliderManagement';
 import { ContactManagement } from '@/components/ContactManagement';
+import { PortalManagement } from '@/components/PortalManagement';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import { NewsAdminPasswordDialog } from '@/components/NewsAdminPasswordDialog';
+import { StudentAdminPasswordDialog } from '@/components/StudentAdminPasswordDialog';
 import { playNotificationSound } from '@/lib/notifications';
 
 interface Student {
@@ -43,6 +55,7 @@ interface Student {
   gender?: string;
   show_final_grade_letter?: boolean;
   course?: string;
+  password?: string;
 }
 
 interface Grade {
@@ -66,21 +79,14 @@ const SUBJECT_DIVIDER = '__divider__';
 
 const VIDEO_EDITING_SUBJECTS = [
   'None',
-  'Basic Computer Skill (Theory)',
-  'Basic Computer Skill (Practical)',
+  'Basic / Premiere Pro Exam 1 ( Theory )',
+  'Basic / Premiere Pro Exam 2 ( Practical )',
+  'Basic / Premiere Pro Exam 3 ( Practical )',
   SUBJECT_DIVIDER,
-  'Basic Video Editing 1 ( Theory )',
-  'Basic Video Editing 2 ( Practical )',
-  'Basic Video Editing 3 ( Practical )',
-  'Final Video Editing Project',
-  'Final Video Editing Exam',
-  SUBJECT_DIVIDER,
-  'Basic Photoshop ( Theory )',
-  'Basic Photoshop ( Practical )',
-  'Final Photoshop Project',
-  'Final Photoshop Exam',
-  SUBJECT_DIVIDER,
-  'Attendance & Participation',
+  'Basic / Photoshop Exam 1 ( Theory )',
+  'Basic / Photoshop Exam 2 ( Practical )',
+  'Basic / Photoshop Exam 3 ( Practical )',
+  'Continuous Assessment',
 ];
 
 const CINEMATOGRAPHY_SUBJECTS = [
@@ -93,13 +99,14 @@ const CINEMATOGRAPHY_SUBJECTS = [
   'Final Project',
   SUBJECT_DIVIDER,
   'Shooting Material',
-  'Eractical Exam',
+  'Practical Exam',
   'Project',
   SUBJECT_DIVIDER,
   'Light Theory',
   'Dramatic scene',
   'Project',
   'Participation & Attendance',
+  'Continuous Assessment',
 ];
 
 const ALL_STANDARD_SUBJECTS = Array.from(
@@ -139,6 +146,7 @@ export const AdminView = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminRole, setAdminRole] = useState<'super_admin' | 'news_admin' | 'student_admin' | null>(null);
   const [adminPage, setAdminPage] = useState<'students' | 'management'>('students');
   const [students, setStudents] = useState<(Student & { grades?: Grade[]; comments?: Comment[] })[]>([]);
   const [formData, setFormData] = useState({
@@ -146,6 +154,7 @@ export const AdminView = () => {
     name: '',
     batchNumber: '',
     gender: '',
+    password: '',
   });
   const [subjectGrades, setSubjectGrades] = useState<SubjectGrade[]>([{
     subject: '',
@@ -173,9 +182,15 @@ export const AdminView = () => {
   const [editingAllGrades, setEditingAllGrades] = useState(false);
   const [originalStudentId, setOriginalStudentId] = useState<string>('');
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [showNewsAdminPassword, setShowNewsAdminPassword] = useState(false);
+  const [showStudentAdminPassword, setShowStudentAdminPassword] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('SuperAdmin#2018');
+  const [newsAdminPassword, setNewsAdminPassword] = useState('NewsAdmin@2018');
+  const [studentAdminPassword, setStudentAdminPassword] = useState('StudetAdmin@2019');
   const [unreadStudentComments, setUnreadStudentComments] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [editingComment, setEditingComment] = useState<any | null>(null);
+  const [editMessageText, setEditMessageText] = useState('');
   // Course selection for add-grade form and students list filtering
   const [formCourse, setFormCourse] = useState<'all' | 'cinematography' | 'videoediting'>('cinematography');
   const [studentsCourseFilter, setStudentsCourseFilter] = useState<'all' | 'cinematography' | 'videoediting'>('cinematography');
@@ -238,6 +253,25 @@ export const AdminView = () => {
   const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [globalSettings, setGlobalSettings] = useState<{ show_grade_letters: boolean; show_admin_avg_grades: boolean }>({ show_grade_letters: true, show_admin_avg_grades: true });
+  const [avgGradeSort, setAvgGradeSort] = useState<'asc' | 'desc' | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await apiClient.getSchoolSettings();
+        if (data) {
+          setGlobalSettings({
+            show_grade_letters: data.show_grade_letters ?? true,
+            show_admin_avg_grades: data.show_admin_avg_grades ?? true
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch settings", e);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const storedLockout = localStorage.getItem('adminLockoutEndTime');
@@ -288,27 +322,70 @@ export const AdminView = () => {
       setShowChangePassword(false);
       return true;
     }
+    if (showNewsAdminPassword) {
+      setShowNewsAdminPassword(false);
+      return true;
+    }
+    if (showStudentAdminPassword) {
+      setShowStudentAdminPassword(false);
+      return true;
+    }
     return false;
   });
 
   useEffect(() => {
     // Fetch admin password from database
     const fetchAdminPassword = async () => {
-      const { data } = await supabase
-        .from('admin_settings')
-        .select('admin_password')
-        .single();
-      
-      if (data) {
-        setAdminPassword(data.admin_password);
+      try {
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('admin_password, news_admin_password, student_admin_password')
+          .single();
+        
+        if (error) {
+          // If student_admin_password column is missing (PostgREST 42703), fallback to legacy columns
+          if (error.code === '42703') {
+            console.warn('Student admin column missing, fetching legacy columns');
+            const { data: legacyData } = await supabase
+              .from('admin_settings')
+              .select('admin_password, news_admin_password')
+              .single();
+            
+            if (legacyData) {
+              setAdminPassword(legacyData.admin_password);
+              if (legacyData.news_admin_password) setNewsAdminPassword(legacyData.news_admin_password);
+            }
+            return;
+          }
+          throw error;
+        }
+        
+        if (data) {
+          setAdminPassword(data.admin_password);
+          if (data.news_admin_password) {
+            setNewsAdminPassword(data.news_admin_password);
+          }
+          if (data.student_admin_password) {
+            setStudentAdminPassword(data.student_admin_password);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching admin settings:', err);
       }
     };
     fetchAdminPassword();
 
     // Check if already authenticated from session storage
     const isAuth = sessionStorage.getItem('adminAuthenticated') === 'true';
+    const storedRole = sessionStorage.getItem('adminRole') as 'super_admin' | 'news_admin' | 'student_admin' | null;
     if (isAuth) {
       setIsAuthenticated(true);
+      setAdminRole(storedRole || 'super_admin'); // Default to super_admin for backward compatibility
+      if (storedRole === 'news_admin') {
+        setAdminPage('management');
+      } else if (storedRole === 'student_admin') {
+        setAdminPage('students');
+      }
     }
   }, []);
 
@@ -382,18 +459,44 @@ export const AdminView = () => {
     // Fetch latest password from database
     const { data } = await supabase
       .from('admin_settings')
-      .select('admin_password')
+      .select('admin_password, news_admin_password, student_admin_password')
       .single();
     
-    const currentPassword = data?.admin_password || 'admin123';
+    const currentAdminPassword = data?.admin_password || 'SuperAdmin#2018';
+    const currentNewsAdminPassword = data?.news_admin_password || 'NewsAdmin@2018';
+    const currentStudentAdminPassword = data?.student_admin_password || 'StudetAdmin@2019';
     
-    if (password === currentPassword) {
+    if (password === currentAdminPassword) {
       setIsAuthenticated(true);
+      setAdminRole('super_admin');
       sessionStorage.setItem('adminAuthenticated', 'true');
+      sessionStorage.setItem('adminRole', 'super_admin');
       // Reset failed attempts on success
       setFailedAttempts(0);
       localStorage.removeItem('adminFailedAttempts');
       toast.success('Login successful!');
+      setPassword('');
+    } else if (password === currentNewsAdminPassword) {
+      setIsAuthenticated(true);
+      setAdminRole('news_admin');
+      setAdminPage('management');
+      sessionStorage.setItem('adminAuthenticated', 'true');
+      sessionStorage.setItem('adminRole', 'news_admin');
+      // Reset failed attempts on success
+      setFailedAttempts(0);
+      localStorage.removeItem('adminFailedAttempts');
+      toast.success('Login successful as News Admin!');
+      setPassword('');
+    } else if (password === currentStudentAdminPassword) {
+      setIsAuthenticated(true);
+      setAdminRole('student_admin');
+      setAdminPage('students');
+      sessionStorage.setItem('adminAuthenticated', 'true');
+      sessionStorage.setItem('adminRole', 'student_admin');
+      // Reset failed attempts on success
+      setFailedAttempts(0);
+      localStorage.removeItem('adminFailedAttempts');
+      toast.success('Login successful as Student Admin!');
       setPassword('');
     } else {
       if (navigator.vibrate) {
@@ -425,7 +528,9 @@ export const AdminView = () => {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setAdminRole(null);
     sessionStorage.removeItem('adminAuthenticated');
+    sessionStorage.removeItem('adminRole');
     toast.success('Logged out successfully');
   };
 
@@ -443,15 +548,14 @@ export const AdminView = () => {
     }
   };
 
-  const handleGradeLetterToggle = async (studentId: string, currentVisible?: boolean) => {
-    const nextValue = !currentVisible;
+  const handleGradeLetterToggle = async (studentId: string, newValue: boolean) => {
     const updateResult = await supabase
       .from('students')
-      .update({ show_final_grade_letter: nextValue })
+      .update({ show_final_grade_letter: newValue })
       .eq('student_id', studentId);
 
     if (!updateResult.error) {
-      toast.success(nextValue ? 'Grade letter shown to student' : 'Grade letter hidden from student');
+      toast.success(newValue ? 'Grade letter shown to student' : 'Grade letter hidden from student');
       fetchStudents();
       return;
     }
@@ -475,7 +579,7 @@ export const AdminView = () => {
       return;
     }
 
-    const updatedName = updateGradeLetterFlagInName(existingStudent.name, nextValue);
+    const updatedName = updateGradeLetterFlagInName(existingStudent.name, newValue);
     const fallbackResult = await supabase
       .from('students')
       .update({ name: updatedName })
@@ -487,8 +591,40 @@ export const AdminView = () => {
       return;
     }
 
-    toast.success(nextValue ? 'Grade letter shown to student' : 'Grade letter hidden from student');
+    toast.success(newValue ? 'Grade letter shown to student' : 'Grade letter hidden from student');
     fetchStudents();
+  };
+
+  const handleBulkGradeLetterToggle = async (enable: boolean) => {
+    try {
+      // Optimistic update
+      const updatedStudents = students.map(s => ({
+        ...s,
+        show_final_grade_letter: enable
+      }));
+      setStudents(updatedStudents);
+
+      const { error } = await supabase
+        .from('students')
+        .update({ show_final_grade_letter: enable })
+        .neq('student_id', '_______'); // Update all rows
+
+      if (error) {
+        if (isMissingGradeLetterColumnError(error)) {
+          toast.error("Bulk update requires database column migration");
+          fetchStudents(); // Revert
+          return;
+        }
+        throw error;
+      }
+
+      toast.success(enable ? t('gradeLetterOnAll') : t('gradeLetterOffAll'));
+      fetchStudents();
+    } catch (error) {
+      console.error('Bulk toggle error:', error);
+      toast.error('Failed to update all students');
+      fetchStudents(); // Revert
+    }
   };
 
   const handleExportViewingStudentPDF = async () => {
@@ -505,7 +641,7 @@ export const AdminView = () => {
       const res = await exportGradeReport({ name: viewingStudent.name, student_id: viewingStudent.student_id, batch_number: (viewingStudent as any).batch_number }, visible.map((g: any) => ({ subject: g.subject, grade: g.grade, total: g.total })), avg, {
         openInNewTab: false,
         showGradeLetter: !!viewingStudent.show_final_grade_letter,
-        courseTitle: studentsCourseFilter === 'cinematography' ? 'Cinematography' : (studentsCourseFilter === 'videoediting' ? 'Video Editing' : 'All'),
+        courseTitle: studentsCourseFilter === 'cinematography' ? 'Cinematography' : (studentsCourseFilter === 'videoediting' ? 'Vision & Sound Editing' : 'All'),
         logoPath: '/Bilal%20Videography%20Logo%20only%20white.png'
       });
       if (res?.saved) toast.success('PDF download started');
@@ -531,6 +667,17 @@ export const AdminView = () => {
             .select('id, student_id, subject, grade') // Explicitly select columns, excluding 'total'
             .eq('student_id', student.student_id);
 
+          const metadata = parseStudentNameMetadata(student.name);
+          const realName = metadata.realName;
+          const batchNumber = metadata.batch;
+          const genderValue = metadata.gender;
+          const showGradeLetterFlag = typeof student.show_final_grade_letter === 'boolean'
+            ? student.show_final_grade_letter
+            : !!metadata.showGradeLetter;
+
+          // Prefer explicit DB column `course` when present; fall back to metadata
+          const courseFromDb = (student as any).course || metadata.course || undefined;
+
           // Parse subject to extract course and outOf if present.
           // New encoded formats supported:
           // 1) "course|||subject|||outOf"  -> parts[0]=course, parts[1]=subject, parts[2]=outOf
@@ -545,14 +692,23 @@ export const AdminView = () => {
                 total: parts[2]
               };
             }
+            if (parts.length === 2 && (parts[0] === 'cinematography' || parts[0] === 'videoediting')) {
+              return {
+                ...g,
+                course: parts[0],
+                subject: parts[1],
+                total: undefined
+              };
+            }
             if (parts.length > 1) {
               return {
                 ...g,
                 subject: parts[0],
-                total: parts[1]
+                total: parts[1],
+                course: (g as any).course || courseFromDb
               };
             }
-            return { ...g };
+            return { ...g, course: (g as any).course || courseFromDb };
           });
 
           const { data: comments } = await supabase
@@ -561,17 +717,6 @@ export const AdminView = () => {
             .eq('student_id', student.student_id)
             .order('created_at', { ascending: true });
           
-          const metadata = parseStudentNameMetadata(student.name);
-          const realName = metadata.realName;
-          const batchNumber = metadata.batch;
-          const genderValue = metadata.gender;
-          const showGradeLetterFlag = typeof student.show_final_grade_letter === 'boolean'
-            ? student.show_final_grade_letter
-            : !!metadata.showGradeLetter;
-
-          // Prefer explicit DB column `course` when present; fall back to metadata
-          const courseFromDb = (student as any).course || metadata.course || undefined;
-
           return { 
             ...student, 
             name: realName, 
@@ -656,6 +801,7 @@ export const AdminView = () => {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
+      toast.error('Failed to upload photo');
       return null;
     }
 
@@ -667,6 +813,7 @@ export const AdminView = () => {
     e.preventDefault();
     const { studentId, name, batchNumber, gender } = formData;
     const sanitizedId = studentId.trim().toUpperCase();
+    const editingStudent = students.find(s => s.student_id === sanitizedId);
 
     if (!sanitizedId || !name.trim()) {
       toast.error('Please enter student ID and name');
@@ -717,6 +864,7 @@ export const AdminView = () => {
       const studentData: any = { 
         student_id: sanitizedId, 
         name: fullName,
+        password: formData.password || (editingStudent?.password) || null,
       };
       // Persist explicit course column as well for robust filtering
       if (courseToStore) studentData.course = courseToStore;
@@ -735,15 +883,43 @@ export const AdminView = () => {
         if (studentError) throw studentError;
       } catch (err: any) {
         const msg = (err?.message || '').toLowerCase();
-        const isMissingCourseCol = err?.code === '42703' || msg.includes("column \"course\"") || msg.includes('course');
+        // Check for missing columns (PostgREST error 42703)
+        const isMissingCourseCol = err?.code === '42703' && (msg.includes("column \"course\"") || msg.includes('course'));
+        const isMissingPasswordCol = err?.code === '42703' && (msg.includes("column \"password\"") || msg.includes('password'));
+
         if (isMissingCourseCol && 'course' in studentData) {
-          // Retry without course field
           delete studentData.course;
+          // If we removed course, try again. Note: If password is ALSO missing, this retry will fail,
+          // and the user will have to click save again (which will hit the password check below).
+          // Ideally we'd loop, but this covers the most common cases.
+          const { error: retryErr } = await supabase
+            .from('students')
+            .upsert(studentData, { onConflict: 'student_id' });
+          
+          // If the retry failed because of password, handle that too
+          if (retryErr) {
+             const retryMsg = (retryErr.message || '').toLowerCase();
+             const isMissingPasswordColRetry = retryErr.code === '42703' && (retryMsg.includes("column \"password\"") || retryMsg.includes('password'));
+             if (isMissingPasswordColRetry && 'password' in studentData) {
+                delete studentData.password;
+                const { error: finalErr } = await supabase
+                  .from('students')
+                  .upsert(studentData, { onConflict: 'student_id' });
+                if (finalErr) throw finalErr;
+                toast.info('Saved without course/password columns. Please run migrations.');
+             } else {
+                throw retryErr;
+             }
+          } else {
+             toast.info('Saved without course DB column; using metadata fallback for course.');
+          }
+        } else if (isMissingPasswordCol && 'password' in studentData) {
+          delete studentData.password;
           const { error: retryErr } = await supabase
             .from('students')
             .upsert(studentData, { onConflict: 'student_id' });
           if (retryErr) throw retryErr;
-          toast.info('Saved without course DB column; using metadata fallback for course.');
+          toast.info('Saved without password DB column. Please run migration.');
         } else {
           throw err;
         }
@@ -772,7 +948,7 @@ export const AdminView = () => {
         const detectCourseFromPacked = (packed: string | null | undefined): 'cinematography' | 'videoediting' => {
           if (!packed) return 'cinematography';
           const parts = packed.split('|||');
-          if (parts.length >= 3 && (parts[0] === 'cinematography' || parts[0] === 'videoediting')) return parts[0] as any;
+          if (parts.length >= 2 && (parts[0] === 'cinematography' || parts[0] === 'videoediting')) return parts[0] as any;
           // If there's no explicit course prefix we treat it as 'cinematography' (legacy default)
           return 'cinematography';
         };
@@ -901,7 +1077,7 @@ export const AdminView = () => {
         return [{ ...baseStudent, grades: newGrades }, ...prev];
       });
 
-      setFormData({ studentId: '', name: '', batchNumber: '', gender: '' });
+      setFormData({ studentId: '', name: '', batchNumber: '', gender: '', password: '' });
       setSubjectGrades([{ subject: '', grade: '', outOf: '', isCustom: false, course: getDefaultCourse() }]);
       setPhotoFile(null);
       setPhotoPreview('');
@@ -927,6 +1103,7 @@ export const AdminView = () => {
       name: student.name,
       batchNumber: student.batch_number || '',
       gender: student.gender || '',
+      password: student.password || '',
     });
     setOriginalStudentId(student.student_id);
 
@@ -941,11 +1118,17 @@ export const AdminView = () => {
     if (filteredGrades.length > 0) {
       setSubjectGrades(filteredGrades.map(g => {
         const normalizedSubject = g.subject.trim();
+        const currentCourseSubjects = courseContext === 'cinematography' ? CINEMATOGRAPHY_SUBJECTS : VIDEO_EDITING_SUBJECTS;
+        // Robust matching: ignore case and spaces
+        const cleanSubject = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+        const target = cleanSubject(normalizedSubject);
+        const standardSubject = currentCourseSubjects.find(s => cleanSubject(s) === target);
+        const isStandardInCourse = !!standardSubject;
         return {
-          subject: normalizedSubject,
+          subject: standardSubject || normalizedSubject,
           grade: g.grade.toString(),
           outOf: g.total ? g.total.toString() : '',
-          isCustom: !isRegisteredSubject(normalizedSubject),
+          isCustom: !isStandardInCourse,
           course: normalizeCourse((g as any).course) || courseContext,
         };
       }));
@@ -971,6 +1154,7 @@ export const AdminView = () => {
       name: student.name,
       batchNumber: student.batch_number || '',
       gender: student.gender || '',
+      password: student.password || '',
     });
     setOriginalStudentId(student.student_id);
     const lockToCourse = studentsCourseFilter !== 'all' ? studentsCourseFilter : null;
@@ -984,11 +1168,17 @@ export const AdminView = () => {
     if (grade) {
       const normalizedSubject = grade.subject.trim();
       const gradeCourse = normalizeCourse((grade as any).course) || fallbackCourse;
+      const currentCourseSubjects = gradeCourse === 'cinematography' ? CINEMATOGRAPHY_SUBJECTS : VIDEO_EDITING_SUBJECTS;
+      // Robust matching: ignore case and spaces
+      const cleanSubject = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+      const target = cleanSubject(normalizedSubject);
+      const standardSubject = currentCourseSubjects.find(s => cleanSubject(s) === target);
+      const isStandardInCourse = !!standardSubject;
       setSubjectGrades([{ 
-        subject: normalizedSubject, 
+        subject: standardSubject || normalizedSubject, 
         grade: grade.grade.toString(),
         outOf: grade.total ? grade.total.toString() : '',
-        isCustom: !isRegisteredSubject(normalizedSubject),
+        isCustom: !isStandardInCourse,
         course: gradeCourse,
       }]);
       setEditingGradeId(grade.id);
@@ -1000,11 +1190,17 @@ export const AdminView = () => {
       if (filteredGrades.length > 0) {
         setSubjectGrades(filteredGrades.map(g => {
           const normalizedSubject = g.subject.trim();
+          const currentCourseSubjects = fallbackCourse === 'cinematography' ? CINEMATOGRAPHY_SUBJECTS : VIDEO_EDITING_SUBJECTS;
+          // Robust matching: ignore case and spaces
+          const cleanSubject = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+          const target = cleanSubject(normalizedSubject);
+          const standardSubject = currentCourseSubjects.find(s => cleanSubject(s) === target);
+          const isStandardInCourse = !!standardSubject;
           return {
-            subject: normalizedSubject,
+            subject: standardSubject || normalizedSubject,
             grade: g.grade.toString(),
             outOf: g.total ? g.total.toString() : '',
-            isCustom: !isRegisteredSubject(normalizedSubject),
+            isCustom: !isStandardInCourse,
             course: normalizeCourse((g as any).course) || fallbackCourse,
           };
         }));
@@ -1063,10 +1259,9 @@ export const AdminView = () => {
 
   const getGradeColor = (avgGrade: number): string => {
     const letter = calculateGradeLetter(avgGrade);
-    if (letter === 'A+' || letter === 'A') return 'bg-green-600 text-white';
-    if (letter === 'B') return 'bg-green-400 text-gray-900';
-    if (letter === 'C') return 'bg-yellow-400 text-gray-900';
-    if (letter === 'D') return 'bg-red-300 text-gray-900';
+    if (['A+', 'A', 'A-'].includes(letter)) return 'bg-green-600 text-white';
+    if (['B+', 'B', 'B-'].includes(letter)) return 'bg-green-400 text-gray-900';
+    if (['C+', 'C'].includes(letter)) return 'bg-yellow-400 text-gray-900';
     return 'bg-red-600 text-white';
   };
 
@@ -1103,12 +1298,34 @@ export const AdminView = () => {
     // Only letter grade filtering now
     if (gradeFilter === 'a+') return letter === 'A+';
     if (gradeFilter === 'a') return letter === 'A';
+    if (gradeFilter === 'a-') return letter === 'A-';
+    if (gradeFilter === 'b+') return letter === 'B+';
     if (gradeFilter === 'b') return letter === 'B';
+    if (gradeFilter === 'b-') return letter === 'B-';
+    if (gradeFilter === 'c+') return letter === 'C+';
     if (gradeFilter === 'c') return letter === 'C';
-    if (gradeFilter === 'd') return letter === 'D';
-    if (gradeFilter === 'f') return letter === 'F';
+    if (gradeFilter === 'non_compitant') return letter === 'NON CMPITANT';
     
     return true;
+  });
+
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    if (!avgGradeSort) return 0;
+
+    const getAvg = (student: Student & { grades: any[] }) => {
+      const allGrades = student.grades || [];
+      const grades = studentsCourseFilter === 'all' ? allGrades : allGrades.filter((g: any) => (g.course || '').toLowerCase() === studentsCourseFilter.toLowerCase());
+      return grades.length > 0 ? calculateAverageGrade(grades.map((g: any) => g.grade)) : 0;
+    };
+
+    const avgA = getAvg(a as any);
+    const avgB = getAvg(b as any);
+
+    if (avgGradeSort === 'asc') {
+      return avgA - avgB;
+    } else {
+      return avgB - avgA;
+    }
   });
 
   const handleDelete = async (studentId: string, name: string) => {
@@ -1130,6 +1347,62 @@ export const AdminView = () => {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId);
+      
+      if (error) throw error;
+      
+      toast.success('Message deleted');
+      // Refresh comments for the viewing student
+      if (viewingStudent) {
+        const { data: comments } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('student_id', viewingStudent.student_id)
+          .order('created_at', { ascending: true });
+          
+        setViewingStudent(prev => prev ? { ...prev, comments: comments || [] } : null);
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      toast.error('Failed to delete message');
+    }
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingComment || !editMessageText.trim()) return;
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .update({ message: editMessageText.trim() })
+        .eq('id', editingComment.id);
+        
+      if (error) throw error;
+      
+      toast.success('Message updated');
+      setEditingComment(null);
+      setEditMessageText('');
+      
+      // Refresh comments
+      if (viewingStudent) {
+        const { data: comments } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('student_id', viewingStudent.student_id)
+          .order('created_at', { ascending: true });
+          
+        setViewingStudent(prev => prev ? { ...prev, comments: comments || [] } : null);
+      }
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      toast.error('Failed to update message');
+    }
+  };
+
   const handleSendReply = async (studentId: string) => {
     if (!newReply.trim()) return;
 
@@ -1144,17 +1417,29 @@ export const AdminView = () => {
 
       if (error) throw error;
       setNewReply('');
-      toast.success('Reply sent!');
+      toast.success(t('replySent'));
+      
+      // Refresh comments for the viewing student
+      if (viewingStudent) {
+        const { data: comments } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('student_id', viewingStudent.student_id)
+          .order('created_at', { ascending: true });
+          
+        setViewingStudent(prev => prev ? { ...prev, comments: comments || [] } : null);
+      }
+      
       fetchStudents();
     } catch (error) {
       console.error('Error sending reply:', error);
-      toast.error('Failed to send reply');
+      toast.error(t('replyFailed'));
     }
   };
 
   if (lockoutEndTime && lockoutEndTime > Date.now()) {
     return (
-      <div className="fixed inset-0 z-50 bg-green-600 flex flex-col items-center justify-center text-white p-4 animate-in fade-in duration-300">
+      <div className="fixed inset-0 z-50 bg-[#0c9488] flex flex-col items-center justify-center text-white p-4 animate-in fade-in duration-300">
         <div className="bg-white/20 p-6 rounded-full mb-6 animate-pulse">
           <Lock className="w-16 h-16 sm:w-24 sm:h-24" />
         </div>
@@ -1177,11 +1462,11 @@ export const AdminView = () => {
       <div className="min-h-screen p-4 flex items-start justify-center pt-12">
         <Card className="w-full max-w-md p-6 sm:p-8 shadow-lg bg-white">
           <div className="flex flex-col items-center mb-4">
-            <div className="w-16 h-16 rounded-full bg-admin/10 flex items-center justify-center mb-3">
-              <User className="w-10 h-10 text-admin" />
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <User className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-center">{t('adminAccessTitle')}</h1>
-            <p className="text-muted-foreground text-center mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-center text-primary">{t('adminAccessTitle')}</h1>
+            <p className="text-primary/80 text-center mt-1 font-medium">
               {t('adminAccessSubtitle')}
             </p>
           </div>
@@ -1194,19 +1479,19 @@ export const AdminView = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('passwordPlaceholder')}
                 required
-                className="pr-10"
+                className="pr-10 border-primary/20 focus-visible:ring-primary"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent text-primary/60 hover:text-primary"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
-            <Button type="submit" className="w-full bg-admin hover:bg-admin/90">
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               {t('signIn')}
             </Button>
           </form>
@@ -1230,37 +1515,41 @@ export const AdminView = () => {
       <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in duration-500">
         {/* Page Toggle Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
-          <Button
-            onClick={() => setAdminPage('students')}
-            variant={adminPage === 'students' ? 'default' : 'outline'}
-            className={`w-full ${adminPage === 'students' ? 'bg-admin hover:bg-admin/90' : ''}`}
-          >
-            STUDENT PANEL
-          </Button>
-          <Button
-            onClick={() => setAdminPage('management')}
-            variant={adminPage === 'management' ? 'default' : 'outline'}
-            className={`w-full ${adminPage === 'management' ? 'bg-admin hover:bg-admin/90' : ''}`}
-          >
-            Management Panel
-          </Button>
+          {adminRole !== 'news_admin' && (
+            <Button
+              onClick={() => setAdminPage('students')}
+              variant={adminPage === 'students' ? 'default' : 'outline'}
+              className={`w-full shadow-md border border-white/20 active:bg-admin active:text-white ${adminPage === 'students' ? 'bg-admin hover:bg-admin/90' : ''}`}
+            >
+              {t('studentPanelButton')}
+            </Button>
+          )}
+          {adminRole !== 'student_admin' && (
+            <Button
+              onClick={() => setAdminPage('management')}
+              variant={adminPage === 'management' ? 'default' : 'outline'}
+              className={`w-full shadow-md border border-white/20 active:bg-admin active:text-white ${adminPage === 'management' ? 'bg-admin hover:bg-admin/90' : ''}`}
+            >
+              {t('managementToggleLabel')}
+            </Button>
+          )}
           <Button
             onClick={handleLogout}
             variant="outline"
-            className="w-full gap-2"
+            className="w-full gap-2 shadow-md border border-white/20 active:bg-white active:text-admin"
           >
             <LogOut className="w-4 h-4" />
             Sign Out
           </Button>
         </div>
 
-        {adminPage === 'students' ? (
+        {adminPage === 'students' && adminRole !== 'news_admin' ? (
           <>
         <Card className="p-4 sm:p-6 shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
-              <Plus className="w-5 h-5 text-admin" />
-              <h2 className="text-lg sm:text-xl font-bold flex-1 text-left">
+              <Plus className="w-5 h-5 text-primary" />
+              <h2 className="text-lg sm:text-xl font-bold flex-1 text-left text-primary">
                 {editingAllGrades ? t('editAllGradesTitle') : t('addGradesTitle')}
               </h2>
             </div>
@@ -1319,7 +1608,7 @@ export const AdminView = () => {
                       disabled={isVideoEditingButtonDisabled}
                     >
                       <Edit className="w-4 h-4" />
-                      <span>Video Editing</span>
+                      <span>Vision & Sound Editing</span>
                     </Button>
                   </div>
                 </div>
@@ -1345,6 +1634,13 @@ export const AdminView = () => {
                     value={formData.batchNumber}
                     onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
                     placeholder={t('batchNumberPlaceholder')}
+                  />
+                  <Input
+                    type="text"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Password"
+                    className="font-mono"
                   />
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground block">{t('genderLabel')}</label>
@@ -1372,7 +1668,7 @@ export const AdminView = () => {
                           setIsEditing(false);
                           setEditingGradeId('');
                           setEditingAllGrades(false);
-                          setFormData({ studentId: '', name: '', batchNumber: '', gender: '' });
+                          setFormData({ studentId: '', name: '', batchNumber: '', gender: '', password: '' });
                           setSubjectGrades([{ subject: '', grade: '', outOf: '', isCustom: false, course: getDefaultCourse() }]);
                           setPhotoPreview('');
                           setPhotoFile(null);
@@ -1401,6 +1697,7 @@ export const AdminView = () => {
                         <div>
                           <label className="text-xs text-muted-foreground block mb-1">{t('subjectNameLabel')}</label>
                           <Select
+                            key={`${sg.subject}-${sg.isCustom}-${index}`}
                             value={sg.isCustom ? CUSTOM_SUBJECT_VALUE : (sg.subject || undefined)}
                             onValueChange={(value) => handleSubjectSelection(index, value)}
                           >
@@ -1486,13 +1783,47 @@ export const AdminView = () => {
 
           return (
             <Card className="p-4 sm:p-6 shadow-lg border-l-4 border-l-red-500">
-              <div className="flex items-center gap-2 mb-4">
-                <MessageCircle className="w-5 h-5 text-red-500" />
-                <h2 className="text-lg sm:text-xl font-bold">{t('recentComments')}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="w-5 h-5 text-primary shrink-0" />
+                  <h2 className="text-lg sm:text-xl font-bold text-primary">{t('recentComments')}</h2>
+                  {unreadComments.length > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-pulse flex items-center justify-center shrink-0">
+                      {unreadComments.length} {t('newLabel')}
+                    </span>
+                  )}
+                </div>
                 {unreadComments.length > 0 && (
-                  <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
-                    {unreadComments.length} {t('newLabel')}
-                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 px-3"
+                    onClick={async () => {
+                      const allIds = unreadComments.map(c => c.id);
+                      // Update DB to mark as read
+                      const { error } = await supabase
+                        .from('comments')
+                        .update({ is_read: true })
+                        .in('id', allIds);
+                      
+                      if (error) {
+                        console.error('Error clearing comments:', error);
+                        toast.error(`Failed to clear comments: ${error.message}`);
+                        return;
+                      }
+
+                      // Update local state
+                      const newDismissed = [...dismissedComments, ...allIds];
+                      setDismissedComments(newDismissed);
+                      localStorage.setItem('dismissedComments', JSON.stringify(newDismissed));
+                      
+                      // Refresh students to update UI immediately
+                      fetchStudents();
+                      toast.success('All messages cleared');
+                    }}
+                  >
+                    {t('clearAll')}
+                  </Button>
                 )}
               </div>
               <div className="space-y-3 max-h-60 overflow-y-auto">
@@ -1509,18 +1840,31 @@ export const AdminView = () => {
                             {new Date(comment.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{comment.message}</p>
+                        <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{comment.message}</div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <Button 
                           size="icon" 
                           variant="ghost" 
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            // Dismiss locally without database update
+                          onClick={async () => {
+                            // Mark as read in DB
+                            const { error } = await supabase
+                              .from('comments')
+                              .update({ is_read: true })
+                              .eq('id', comment.id);
+
+                            if (error) {
+                              console.error('Error dismissing comment:', error);
+                              toast.error('Failed to dismiss');
+                              return;
+                            }
+
+                            // Dismiss locally
                             const newDismissed = [...dismissedComments, comment.id];
                             setDismissedComments(newDismissed);
                             localStorage.setItem('dismissedComments', JSON.stringify(newDismissed));
+                            fetchStudents(); // Refresh
                             toast.success('Message removed');
                           }}
                         >
@@ -1573,7 +1917,7 @@ export const AdminView = () => {
 
         <Card className="p-4 sm:p-6 shadow-lg">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <h2 className="text-lg sm:text-xl font-bold">{t('allStudents')} ({filteredStudents.length})</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-primary">{t('allStudents')} ({filteredStudents.length})</h2>
             <div className="flex flex-col gap-2 w-full sm:w-auto">
               <div className="flex items-center gap-2">
                 <Button
@@ -1592,7 +1936,7 @@ export const AdminView = () => {
                   onClick={() => setStudentsCourseFilter('videoediting')}
                   className={studentsCourseFilter === 'videoediting' ? 'bg-admin hover:bg-admin/90' : ''}
                 >
-                  Video Editing
+                  Vision & Sound Editing
                 </Button>
                 <Button type="button" size="sm" variant={studentsCourseFilter === 'all' ? 'default' : 'ghost'} onClick={() => setStudentsCourseFilter('all')}>All</Button>
               </div>
@@ -1614,12 +1958,15 @@ export const AdminView = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('filterGradesLabel')}</SelectItem>
-                    <SelectItem value="a+">A+ (90-100%)</SelectItem>
-                    <SelectItem value="a">A (80-89%)</SelectItem>
-                    <SelectItem value="b">B (70-79%)</SelectItem>
-                    <SelectItem value="c">C (60-69%)</SelectItem>
-                    <SelectItem value="d">D (50-59%)</SelectItem>
-                    <SelectItem value="f">F (Below 50%)</SelectItem>
+                    <SelectItem value="a+">A+ (95-100%)</SelectItem>
+                    <SelectItem value="a">A (92-94.99%)</SelectItem>
+                    <SelectItem value="a-">A- (89-91.99%)</SelectItem>
+                    <SelectItem value="b+">B+ (86-88.99%)</SelectItem>
+                    <SelectItem value="b">B (83-85.99%)</SelectItem>
+                    <SelectItem value="b-">B- (80-82.99%)</SelectItem>
+                    <SelectItem value="c+">C+ (77-79.99%)</SelectItem>
+                    <SelectItem value="c">C (74-76.99%)</SelectItem>
+                    <SelectItem value="non_compitant">NON CMPITANT (Below 74%)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={batchFilter} onValueChange={setBatchFilter}>
@@ -1658,16 +2005,47 @@ export const AdminView = () => {
                   <th className="py-3 px-4 font-semibold text-sm border-r border-border">{t('idColumn')}</th>
                   <th className="py-3 px-4 font-semibold text-sm border-r border-border">{t('nameColumn')}</th>
                   <th className="py-3 px-4 font-semibold text-sm border-r border-border">{t('batchColumn')}</th>
+                  <th className="py-3 px-4 font-semibold text-sm border-r border-border">Password</th>
                   <th className="py-3 px-4 font-semibold text-sm border-r border-border">{t('subjectsColumn')}</th>
-                  <th className="py-3 px-4 font-semibold text-sm border-r border-border text-center w-[140px]">{t('avgGradeColumn')}</th>
-                  <th className="py-3 px-4 font-semibold text-sm text-center w-24">{t('gradeLetterColumn')}</th>
+                  {globalSettings.show_admin_avg_grades && (
+                    <th 
+                      className="py-3 px-4 font-semibold text-sm border-r border-border text-center w-[140px] cursor-pointer hover:bg-muted/50"
+                      onClick={() => setAvgGradeSort(current => {
+                        if (current === null) return 'desc';
+                        if (current === 'desc') return 'asc';
+                        return null;
+                      })}
+                    >
+                      {t('avgGradeColumn')}
+                      {avgGradeSort === 'asc' && <span className="ml-1">↑</span>}
+                      {avgGradeSort === 'desc' && <span className="ml-1">↓</span>}
+                    </th>
+                  )}
+                  <th className="py-3 px-4 font-semibold text-sm text-center w-24">
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-full px-0 font-semibold hover:bg-transparent">
+                          {t('gradeLetterColumn')}
+                          <ChevronDown className="ml-1 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center">
+                        <DropdownMenuItem onClick={() => handleBulkGradeLetterToggle(true)}>
+                          {t('gradeLetterOnAll')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkGradeLetterToggle(false)}>
+                          {t('gradeLetterOffAll')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </th>
                   <th className="py-3 px-4 font-semibold text-sm text-center w-28">{t('viewColumn')}</th>
                   <th className="py-3 px-4 font-semibold text-sm text-center w-20">{t('lockColumn')}</th>
                   <th className="py-3 px-4 font-semibold text-sm text-center w-20">{t('deleteColumn')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredStudents.map((student) => {
+                {sortedStudents.map((student) => {
                   const allGrades = student.grades || [];
                   const grades = studentsCourseFilter === 'all' ? allGrades : allGrades.filter((g: any) => (g.course || '').toLowerCase() === studentsCourseFilter.toLowerCase());
                   const avgGrade = grades.length > 0 ? calculateAverageGrade(grades.map((g: any) => g.grade)) : 0;
@@ -1693,31 +2071,34 @@ export const AdminView = () => {
                         <div>
                           <p className="text-sm font-medium">{student.name}</p>
                           {student.comments && student.comments.length > 0 && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                               <MessageCircle className="w-3 h-3" />
                               {student.comments.length} comment{student.comments.length > 1 ? 's' : ''}
-                            </p>
+                            </div>
                           )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm border-r border-border align-middle">{student.batch_number || '-'}</td>
+                      <td className="py-3 px-4 text-sm font-mono border-r border-border align-middle">{student.password || '-'}</td>
                       <td className="py-3 px-4 text-sm font-semibold text-admin border-r border-border align-middle">{grades.length}</td>
-                      <td className="py-3 px-4 border-r border-border align-middle text-center w-[140px]">
-                        <div className="flex justify-center items-center w-full">
-                          {grades.length > 0 ? (
-                            <span className={`px-3 py-1 rounded-lg font-bold text-sm ${getGradeColor(avgGrade)} inline-flex items-center justify-center min-w-[90px]`}>
-                              {avgGrade}% {calculateGradeLetter(avgGrade)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">{t('noGrades')}</span>
-                          )}
-                        </div>
-                      </td>
+                      {globalSettings.show_admin_avg_grades && (
+                        <td className="py-3 px-4 border-r border-border align-middle text-center w-[140px]">
+                          <div className="flex justify-center items-center w-full">
+                            {grades.length > 0 ? (
+                              <span className={`px-3 py-1 rounded-lg font-bold text-sm ${getGradeColor(avgGrade)} inline-flex items-center justify-center min-w-[90px]`}>
+                                {avgGrade}% {globalSettings.show_grade_letters && student.show_final_grade_letter ? calculateGradeLetter(avgGrade) : ''}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">{t('noGrades')}</span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="py-3 px-4 align-middle text-center">
                         <div className="flex items-center justify-center">
-                          <ToggleSwitch
+                          <Switch
                             checked={!!student.show_final_grade_letter}
-                            onChange={(next) => handleGradeLetterToggle(student.student_id, !!student.show_final_grade_letter)}
+                            onCheckedChange={(checked) => handleGradeLetterToggle(student.student_id, checked)}
                             title={student.show_final_grade_letter ? 'Turn off grade letters' : 'Turn on grade letters'}
                           />
                         </div>
@@ -1769,26 +2150,97 @@ export const AdminView = () => {
           <>
             {/* Management Page Content */}
             <div className="space-y-4 sm:space-y-6">
-              {/* Action Buttons Row */}
-              <div className="flex justify-end gap-2">
-                <Button
-                  onClick={() => setShowChangePassword(true)}
-                  variant="outline"
-                  className="gap-2 text-admin border-admin"
-                >
-                  <Key className="w-4 h-4" />
-                  Change Password
-                </Button>
-              </div>
+              {adminRole === 'super_admin' && (
+                <>
+                  {/* Admin Password Management */}
+                  <Card className="p-4 border-l-4 border-l-orange-500 bg-white shadow-lg">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="p-2 bg-primary rounded-full flex-shrink-0">
+                        <Key className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h3 className="font-bold text-primary">{t('superAdminAccess')}</h3>
+                        <p className="text-xs text-muted-foreground">{t('manageMasterPassword')}</p>
+                      </div>
+                      <Button
+                        onClick={() => setShowChangePassword(true)}
+                        variant="outline"
+                        className="gap-2 text-admin border-admin hover:bg-admin hover:text-white"
+                      >
+                        <Edit className="w-4 h-4" />
+                        {t('changePassword')}
+                      </Button>
+                    </div>
+                  </Card>
 
-              {/* Teacher Management */}
-              <TeacherManagement />
+                  {/* News Admin Password Management */}
+                  <Card className="p-4 border-l-4 border-l-orange-500 bg-white shadow-lg">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="p-2 bg-primary rounded-full flex-shrink-0">
+                        <Key className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h3 className="font-bold text-primary">{t('newsAdminAccess')}</h3>
+                        <p className="text-xs text-muted-foreground">{t('manageNewsAdminAccess')}</p>
+                      </div>
+                      <Button
+                        onClick={() => setShowNewsAdminPassword(true)}
+                        variant="outline"
+                        className="gap-2 text-admin border-admin hover:bg-admin hover:text-white"
+                      >
+                        <Edit className="w-4 h-4" />
+                        {t('changePassword')}
+                      </Button>
+                    </div>
+                  </Card>
 
-              {/* News Management */}
+                  {/* Student Admin Password Management */}
+                  <Card className="p-4 border-l-4 border-l-orange-500 bg-white shadow-lg">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="p-2 bg-primary rounded-full flex-shrink-0">
+                        <Key className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h3 className="font-bold text-primary">{t('studentAdminAccess')}</h3>
+                        <p className="text-xs text-muted-foreground">{t('manageStudentAdminAccess')}</p>
+                      </div>
+                      <Button
+                        onClick={() => setShowStudentAdminPassword(true)}
+                        variant="outline"
+                        className="gap-2 text-admin border-admin hover:bg-admin hover:text-white"
+                      >
+                        <Edit className="w-4 h-4" />
+                        {t('changePassword')}
+                      </Button>
+                    </div>
+                  </Card>
+
+                  {/* Portal Management */}
+                  <PortalManagement />
+
+                  {/* Teacher Management */}
+                  <TeacherManagement />
+                </>
+              )}
+
+              {/* News Management - Visible to both */}
               <NewsManagement />
 
-              {/* Contact Information Management */}
-              <ContactManagement />
+              {adminRole === 'super_admin' && (
+                <>
+                  {/* Video Management */}
+                  <VideoManagement />
+                  <div className="mt-8">
+                    <ModuleManagement />
+                  </div>
+
+                  {/* Slider Management */}
+                  <SliderManagement />
+
+                  {/* Contact Information Management */}
+                  <ContactManagement />
+                </>
+              )}
             </div>
           </>
         )}
@@ -1818,6 +2270,7 @@ export const AdminView = () => {
                 <div className="flex-1">
                   <h3 className="text-xl font-bold">{viewingStudent.name}</h3>
                   <p className="text-sm text-muted-foreground">ID: {viewingStudent.student_id}</p>
+                  <p className="text-sm text-muted-foreground">Password: <span className="font-mono font-bold text-black">{viewingStudent.password || 'Not Set'}</span></p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -1846,9 +2299,11 @@ export const AdminView = () => {
                             <p className="text-sm opacity-90">{t('totalGradeLabel')}</p>
                             <p className="text-2xl font-bold">{total}%</p>
                           </div>
-                        <div className={`inline-flex items-center justify-center h-9 px-3 rounded-md font-bold text-sm bg-white/20`}>
-                          <span className="text-white">{calculateGradeLetter(total)}</span>
-                        </div>
+                        {viewingStudent.show_final_grade_letter && (
+                          <div className={`inline-flex items-center justify-center h-9 px-3 rounded-md font-bold text-sm bg-white/20`}>
+                            <span className="text-white">{calculateGradeLetter(total)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1907,26 +2362,55 @@ export const AdminView = () => {
                   
                   <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                     {viewingStudent.comments.length === 0 ? (
-                      <p className="text-center text-muted-foreground text-sm py-4">No comments yet</p>
+                      <p className="text-center text-muted-foreground text-sm py-4">{t('noMessagesYet')}</p>
                     ) : (
                       viewingStudent.comments.map((comment) => (
                         <div
                           key={comment.id}
-                          className={`p-3 rounded-lg ${
+                          className={`p-3 rounded-lg group relative ${
                             comment.sender_type === 'teacher'
                               ? 'bg-admin/10 mr-8'
                               : 'bg-muted ml-8'
                           }`}
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-sm">
-                              {comment.sender_type === 'teacher' ? 'You (Teacher)' : 'Student'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(comment.created_at).toLocaleString()}
-                            </span>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">
+                                {comment.sender_type === 'teacher' ? `${t('youLabel')} (${t('teacherLabel')})` : t('studentLabel')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(comment.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            
+                            {/* Allow editing/deleting own messages */}
+                            {comment.sender_type === 'teacher' && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-70 hover:opacity-100">
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => {
+                                    setEditingComment(comment);
+                                    setEditMessageText(comment.message);
+                                  }}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    {t('editMessage')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    {t('deleteMessage')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </div>
-                          <p className="text-sm">{comment.message}</p>
+                          <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
                         </div>
                       ))
                     )}
@@ -1936,7 +2420,7 @@ export const AdminView = () => {
                     <Textarea
                       value={newReply}
                       onChange={(e) => setNewReply(e.target.value)}
-                      placeholder="Reply to student..."
+                      placeholder={t('replyPlaceholder')}
                       className="flex-1 min-h-[60px]"
                     />
                     <Button
@@ -1970,6 +2454,33 @@ export const AdminView = () => {
         open={showChangePassword} 
         onOpenChange={setShowChangePassword} 
       />
+
+      <NewsAdminPasswordDialog 
+        open={showNewsAdminPassword} 
+        onOpenChange={setShowNewsAdminPassword} 
+      />
+
+      <StudentAdminPasswordDialog 
+        open={showStudentAdminPassword} 
+        onOpenChange={setShowStudentAdminPassword} 
+      />
+
+      <Dialog open={!!editingComment} onOpenChange={(open) => !open && setEditingComment(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Message</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={editMessageText}
+            onChange={(e) => setEditMessageText(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setEditingComment(null)}>Cancel</Button>
+            <Button onClick={handleUpdateComment}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {isSaving && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">

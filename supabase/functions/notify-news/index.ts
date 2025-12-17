@@ -1,28 +1,58 @@
 // deno-lint-ignore-file no-explicit-any
-/// <reference lib="deno.ns" />
-// @ts-ignore: allow remote Deno std import when the local TS server can't resolve the URL
-import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
-// @ts-ignore: allow remote import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @ts-ignore
+import { GoogleAuth } from "npm:google-auth-library@9";
 
-serve(async (req: Request) => {
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req: Request) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), { 
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const { title, content } = await req.json();
     if (!title || !content) {
-      return new Response(JSON.stringify({ error: 'Missing title/content' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Missing title/content' }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const FCM_SERVER_KEY = Deno.env.get('FCM_SERVER_KEY');
+    const SERVICE_ACCOUNT_JSON = Deno.env.get('FIREBASE_SERVICE_ACCOUNT');
+
+    if (!SERVICE_ACCOUNT_JSON) {
+      return new Response(JSON.stringify({ error: 'FIREBASE_SERVICE_ACCOUNT secret is missing' }), { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch all device tokens
+    // 1. Authenticate with Google
+    const serviceAccount = JSON.parse(SERVICE_ACCOUNT_JSON);
+    const auth = new GoogleAuth({
+      credentials: serviceAccount,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    });
+    const accessToken = await auth.getAccessToken();
+    const projectId = serviceAccount.project_id;
+
+    // 2. Fetch Tokens
     const { data: tokens, error } = await supabase
       .from('device_tokens')
       .select('token')
@@ -30,76 +60,74 @@ serve(async (req: Request) => {
 
     if (error) throw error;
 
-    const registration_ids = (tokens || []).map((t: any) => t.token).filter(Boolean);
+    const deviceTokens = (tokens || []).map((t: any) => t.token).filter(Boolean);
 
-    if (!FCM_SERVER_KEY) {
-      return new Response(
-        JSON.stringify({
-          warning: 'FCM_SERVER_KEY not set',
-          info: 'Function received request but cannot send push without server key.',
-          count: registration_ids.length,
-        }),
-        { status: 200 }
-      );
+    if (deviceTokens.length === 0) {
+      return new Response(JSON.stringify({ message: 'No device tokens registered' }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    if (registration_ids.length === 0) {
-      return new Response(JSON.stringify({ message: 'No device tokens registered' }), { status: 200 });
-    }
-
-    const chunkSize = 900; // FCM limit safety margin
+    // 3. Send Messages (HTTP v1 requires sending one by one)
     let success = 0;
     let failure = 0;
-
-    for (let i = 0; i < registration_ids.length; i += chunkSize) {
-      const chunk = registration_ids.slice(i, i + chunkSize);
-      const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `key=${FCM_SERVER_KEY}`,
-        },
-        body: JSON.stringify({
-          registration_ids: chunk,
-          notification: {
-            title: title,
-            body: content,
-            sound: 'default',
-          },
-          android: {
-            priority: 'high',
-            notification: {
-              channel_id: 'news-alerts',
-              sound: 'default',
-            },
-          },
-          apns: {
+    
+    // Send in parallel batches of 20 to speed it up
+    const batchSize = 20;
+    for (let i = 0; i < deviceTokens.length; i += batchSize) {
+      const batch = deviceTokens.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (token: string) => {
+        try {
+          const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+            method: 'POST',
             headers: {
-              'apns-priority': '10',
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
             },
-            payload: {
-              aps: {
-                sound: 'default',
-                alert: {
-                  title,
+            body: JSON.stringify({
+              message: {
+                token: token,
+                notification: {
+                  title: title,
                   body: content,
                 },
-              },
-            },
-          },
-          data: { type: 'news', sound: 'default' },
-          priority: 'high',
-        }),
-      });
+                android: {
+                  priority: 'high',
+                  notification: {
+                    channel_id: 'news-alerts',
+                    sound: 'default',
+                  },
+                },
+                data: { type: 'news' }
+              }
+            }),
+          });
 
-      const body = await res.json().catch(() => ({}));
-      success += body.success || 0;
-      failure += body.failure || 0;
+          if (res.ok) {
+            success++;
+          } else {
+            console.error('FCM Error:', await res.text());
+            failure++;
+          }
+        } catch (err) {
+          console.error('Fetch Error:', err);
+          failure++;
+        }
+      }));
     }
 
-    return new Response(JSON.stringify({ ok: true, success, failure }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true, success, failure }), { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
   } catch (e) {
     console.error(e);
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(e) }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });

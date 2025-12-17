@@ -65,7 +65,11 @@ export const TeacherManagement = () => {
   const fetchTeachers = async () => {
     try {
       const data = await apiClient.getTeachers();
-      setTeachers(Array.isArray(data) ? data : []);
+      // Ensure client-side sorting as a backup
+      const sortedData = Array.isArray(data) 
+        ? data.sort((a, b) => a.name.localeCompare(b.name)) 
+        : [];
+      setTeachers(sortedData);
     } catch (err) {
       console.error('Failed to fetch teachers:', err);
       toast.error('Failed to load teachers');
@@ -138,6 +142,7 @@ export const TeacherManagement = () => {
       return data?.url || null;
     } catch (err) {
       console.error('Upload error:', err);
+      toast.error('Failed to upload photo');
       return null;
     }
   };
@@ -227,7 +232,7 @@ export const TeacherManagement = () => {
   return (
     <Card className="p-4 sm:p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg sm:text-xl font-bold">{t('teacherManagementTitle')}</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-primary">{t('teacherManagementTitle')}</h2>
         <Button onClick={handleAddNew} className="bg-admin hover:bg-admin/90 gap-2">
           <Plus className="w-4 h-4" />
           {t('addTeacherButton')}
@@ -368,7 +373,7 @@ export const TeacherManagement = () => {
         <Dialog open={!!imgSrc} onOpenChange={() => setImgSrc('')}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Crop Image</DialogTitle>
+              <DialogTitle>{t('cropImage')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <ReactCrop
@@ -381,8 +386,8 @@ export const TeacherManagement = () => {
                 <img ref={imgRef} src={imgSrc} alt="Crop" className="max-h-96 mx-auto" />
               </ReactCrop>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setImgSrc('')}>Cancel</Button>
-                <Button onClick={handleCropComplete} className="bg-admin hover:bg-admin/90">Apply Crop</Button>
+                <Button variant="outline" onClick={() => setImgSrc('')}>{t('cancel')}</Button>
+                <Button onClick={handleCropComplete} className="bg-admin hover:bg-admin/90">{t('applyCrop')}</Button>
               </div>
             </div>
           </DialogContent>

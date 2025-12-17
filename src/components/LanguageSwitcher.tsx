@@ -3,7 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Globe, Check } from 'lucide-react';
 import { useLanguage, AppLanguage } from '@/contexts/LanguageContext';
 
-export const LanguageSwitcher = () => {
+interface LanguageSwitcherProps {
+  direction?: 'up' | 'down';
+  splashMode?: boolean;
+}
+
+export const LanguageSwitcher = ({ direction = 'up', splashMode = false }: LanguageSwitcherProps) => {
   const { language, setLanguage, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,25 +31,53 @@ export const LanguageSwitcher = () => {
     setOpen(false);
   };
 
+  const getButtonClasses = () => {
+    const baseClasses = "gap-2 rounded-full transition-colors duration-300 font-semibold";
+    
+    if (splashMode) {
+      // Smaller size for splash screen
+      const splashClasses = `${baseClasses} px-4 py-2 h-auto text-xs`;
+      if (open) {
+        return `${splashClasses} bg-green-600 text-white hover:bg-green-700 border-green-600 border`;
+      }
+      return `${splashClasses} bg-white text-black hover:bg-gray-100 border-white border`;
+    }
+    
+    // Default size
+    return `${baseClasses} px-6 py-3 h-auto text-sm`;
+  };
+
+  const getLabel = (lang: AppLanguage) => {
+    switch (lang) {
+      case 'en': return t('englishLabel');
+      case 'am': return t('amharicLabel');
+      case 'or': return t('oromoLabel');
+      case 'ar': return t('arabicLabel');
+      default: return t('englishLabel');
+    }
+  };
+
   return (
     <div className="flex justify-center" ref={containerRef}>
       <div className="relative">
         <Button
-          variant="outline"
-          className="gap-2 rounded-full px-6 py-3 h-auto text-sm font-semibold"
+          variant={splashMode ? "ghost" : "outline"}
+          className={getButtonClasses()}
           onClick={() => setOpen((prev) => !prev)}
         >
           <Globe className="w-4 h-4" />
-          {t('languageButton')}: {language === 'en' ? t('englishLabel') : t('amharicLabel')}
+          {t('languageButton')}: {getLabel(language)}
         </Button>
         {open && (
-          <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-white border rounded-2xl shadow-xl w-56 p-4 space-y-3 z-30">
+          <div className={`absolute left-1/2 -translate-x-1/2 bg-white border rounded-2xl shadow-xl w-56 p-4 space-y-3 z-30 ${
+            direction === 'up' ? 'bottom-full mb-3' : 'top-full mt-3'
+          }`}>
             <div>
               <p className="text-sm font-semibold">{t('languageMenuTitle')}</p>
               <p className="text-xs text-muted-foreground">{t('languageHint')}</p>
             </div>
             <div className="space-y-2">
-              {(['en', 'am'] as AppLanguage[]).map((lang) => (
+              {(['en', 'am', 'or', 'ar'] as AppLanguage[]).map((lang) => (
                 <button
                   key={lang}
                   onClick={() => handleSelect(lang)}
@@ -54,7 +87,7 @@ export const LanguageSwitcher = () => {
                       : 'border-transparent text-muted-foreground hover:border-border'
                   }`}
                 >
-                  <span>{lang === 'en' ? t('englishLabel') : t('amharicLabel')}</span>
+                  <span>{getLabel(lang)}</span>
                   {language === lang && <Check className="w-4 h-4" />}
                 </button>
               ))}

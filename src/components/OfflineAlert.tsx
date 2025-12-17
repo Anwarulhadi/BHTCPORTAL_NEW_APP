@@ -20,7 +20,7 @@ export const OfflineAlert = () => {
   if (!isOffline) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-green-600 flex flex-col items-center justify-center text-white">
+    <div className="fixed inset-0 z-[9999] bg-[#0c9488] flex flex-col items-center justify-center text-white">
       <div className="bg-white/20 p-8 rounded-full mb-6 animate-pulse">
         <WifiOff className="w-24 h-24" />
       </div>
